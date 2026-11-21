@@ -9,6 +9,14 @@ ProviderModeOptions = Dict[str, Dict[str, List[ModelOption]]]
 
 
 MODEL_OPTIONS: ProviderModeOptions = {
+    "chatgpt": {
+        "quick": [("GPT-6 Luna（ChatGPT 订阅·快速）", "gpt-6-luna"),
+                  ("GPT-6 Sol（ChatGPT 订阅）", "gpt-6-sol"),
+                  ("Custom model ID", "custom")],
+        "deep": [("GPT-6 Sol（ChatGPT 订阅·深度）", "gpt-6-sol"),
+                 ("GPT-6 Luna（ChatGPT 订阅）", "gpt-6-luna"),
+                 ("Custom model ID", "custom")],
+    },
     "openai": {
         "quick": [
             ("GPT-5.4 Mini - Fast, strong coding and tool use", "gpt-5.4-mini"),

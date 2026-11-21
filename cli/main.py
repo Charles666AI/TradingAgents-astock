@@ -24,7 +24,6 @@ from rich import box
 from rich.align import Align
 from rich.rule import Rule
 
-from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
 from cli.models import AnalystType
 from cli.utils import *
@@ -565,6 +564,13 @@ def get_user_selections():
         )
     )
     selected_llm_provider, backend_url = select_llm_provider()
+    if selected_llm_provider == "chatgpt":
+        from tradingagents.llm_clients.chatgpt_auth import access_token, ChatGPTAuthError
+        try:
+            access_token()
+        except ChatGPTAuthError as exc:
+            console.print(str(exc), markup=False)
+            raise typer.Exit(code=1) from None
 
     # Step 7: Thinking agents
     console.print(
@@ -589,7 +595,7 @@ def get_user_selections():
             )
         )
         thinking_level = ask_gemini_thinking_config()
-    elif provider_lower == "openai":
+    elif provider_lower in ("openai", "chatgpt"):
         console.print(
             create_question_box(
                 "Step 8: Reasoning Effort",
@@ -975,6 +981,7 @@ def format_tool_args(args, max_length=80) -> str:
     return result
 
 def run_analysis(checkpoint: bool = False):
+    from tradingagents.graph.trading_graph import TradingAgentsGraph
     # First get all user selections
     selections = get_user_selections()
 
@@ -1327,6 +1334,57 @@ def performance(
         console.print_json(_json.dumps(summary, ensure_ascii=False))
         return
     console.print(Markdown(format_report(summary)))
+
+
+from enum import Enum
+from rich.markup import escape
+
+
+class Plan(str, Enum):
+    chatgpt = "chatgpt"
+
+
+@app.command()
+def login(plan: Plan):
+    """Sign in with your ChatGPT Plus or Pro plan, for the chatgpt provider."""
+    from tradingagents.llm_clients import chatgpt_auth
+
+    try:
+        # One unwrapped line, so the sign-in address can be copied whole.
+        email = chatgpt_auth.sign_in(
+            say=lambda line: console.print(line, soft_wrap=True, markup=False, highlight=False))
+    except chatgpt_auth.ChatGPTAuthError as exc:
+        console.print(f"[red]{escape(str(exc))}[/red]")
+        raise typer.Exit(code=1) from None
+    console.print(f"[green]Signed in to ChatGPT as {escape(email)}.[/green]")
+
+
+@app.command()
+def status(plan: Plan):
+    """Check the ChatGPT sign-in (refresh if needed), without calling a model."""
+    from tradingagents.llm_clients import chatgpt_auth
+
+    try:
+        chatgpt_auth.access_token()
+    except chatgpt_auth.ChatGPTAuthError as exc:
+        console.print(str(exc), markup=False)
+        raise typer.Exit(code=1) from None
+    console.print(f"ChatGPT signed in: {chatgpt_auth.signed_in_as() or 'account'}", markup=False)
+
+
+@app.command()
+def logout(plan: Plan):
+    """Sign out of your ChatGPT plan: revoke this machine's access and forget it."""
+    from tradingagents.llm_clients import chatgpt_auth
+
+    outcome = chatgpt_auth.sign_out()
+    if outcome == "revoked":
+        console.print("Signed out of ChatGPT.")
+    elif outcome == "forgotten":
+        console.print("[yellow]Signed out here, but OpenAI could not be reached to revoke the sign-in; "
+                      "it stays valid at OpenAI until it expires.[/yellow]")
+    else:
+        console.print("Not signed in to ChatGPT.")
 
 
 if __name__ == "__main__":

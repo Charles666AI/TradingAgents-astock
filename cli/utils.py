@@ -206,11 +206,22 @@ def _select_model(provider: str, mode: str) -> str:
             validate=lambda x: len(x.strip()) > 0 or "Please enter a deployment name.",
         ).ask().strip()
 
+    options = get_model_options(provider, mode)
+    if provider.lower() == "chatgpt":
+        from tradingagents.llm_clients import chatgpt_auth
+        import requests
+        try:
+            offered = chatgpt_auth.list_models()
+            if offered:
+                options = offered + [("Custom model ID", "custom")]
+        except (requests.RequestException, chatgpt_auth.ChatGPTAuthError, ValueError):
+            console.print("无法获取订阅模型列表，使用内置候选；也可手动填写模型 ID。")
+
     choice = questionary.select(
         f"Select Your [{mode.title()}-Thinking LLM Engine]:",
         choices=[
             questionary.Choice(display, value=value)
-            for display, value in get_model_options(provider, mode)
+            for display, value in options
         ],
         instruction="\n- Use arrow keys to navigate\n- Press Enter to select",
         style=questionary.Style(
@@ -246,6 +257,7 @@ def select_llm_provider() -> tuple[str, str | None]:
     # (display_name, provider_key, base_url)
     PROVIDERS = [
         ("OpenAI", "openai", "https://api.openai.com/v1"),
+        ("ChatGPT（Plus / Pro 订阅，先运行 tradingagents login chatgpt）", "chatgpt", "https://api.openai.com/v1"),
         ("Google", "google", None),
         ("Anthropic", "anthropic", "https://api.anthropic.com/"),
         ("xAI", "xai", "https://api.x.ai/v1"),

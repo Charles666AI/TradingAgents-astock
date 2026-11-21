@@ -164,6 +164,9 @@ def _build_config() -> dict:
     # Optional third-party / proxy endpoint. Sidebar input wins, else .env BACKEND_URL.
     backend_url = (st.session_state.get("llm_base_url") or os.getenv("BACKEND_URL") or "").strip()
     config["backend_url"] = backend_url or None
+    if config["llm_provider"] == "chatgpt":
+        # A remembered relay URL / BACKEND_URL must never receive OAuth tokens.
+        config["backend_url"] = None
     config["data_vendors"] = {
         "core_stock_apis": "a_stock",
         "technical_indicators": "a_stock",

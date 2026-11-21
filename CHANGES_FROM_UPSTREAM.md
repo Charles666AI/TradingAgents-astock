@@ -297,7 +297,7 @@ eastmoney 全系北向资金接口（含 akshare `stock_hsgt_hist_em`、datacent
 
 ### MiniMax LLM 供应商集成
 
-**目的：** 接入国内直连、OpenAI 兼容的 MiniMax 作为推荐 LLM 供应商。TradingAgents 每次分析需 30-50 次 API 调用，Claude/ChatGPT 订阅版无法使用。
+**目的：** 接入国内直连、OpenAI 兼容的 MiniMax 作为推荐 LLM 供应商。TradingAgents 每次分析需 30-50 次 API 调用，此项新增时尚未支持订阅。当前已支持 ChatGPT OAuth 订阅及可选的 Claude Agent SDK 订阅。
 
 **新增/修改文件：**
 

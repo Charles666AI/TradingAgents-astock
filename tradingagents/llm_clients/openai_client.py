@@ -219,6 +219,67 @@ class MinimaxChatOpenAI(NormalizedChatOpenAI):
             payload.setdefault("reasoning_split", True)
         return payload
 
+
+class ChatGPTPlanChatOpenAI(NormalizedChatOpenAI):
+    """Responses API using a refreshed ChatGPT plan credential."""
+
+    def __init__(self, **kwargs):
+        for name in ("temperature", "top_p", "max_tokens", "max_completion_tokens"):
+            if kwargs.pop(name, None) is not None:
+                logger.warning("A ChatGPT plan does not accept %s; it is not sent.", name)
+        kwargs.update(streaming=True, store=False, use_responses_api=True)
+        super().__init__(**kwargs)
+        self.openai_organization = None
+        for client in (self.root_client, self.root_async_client):
+            client.organization = None
+            client.project = None
+
+    def _get_request_payload(self, input_, *, stop=None, **kwargs):
+        payload = super()._get_request_payload(input_, stop=stop, **kwargs)
+        # SIWC preview restrictions: send history rather than stored response IDs.
+        for name in ("temperature", "top_p", "max_tokens", "max_output_tokens", "max_completion_tokens",
+                     "background", "conversation", "max_tool_calls", "metadata", "moderation",
+                     "multi_agent", "prompt", "prompt_cache_retention", "safety_identifier",
+                     "top_logprobs", "truncation", "user", "previous_response_id"):
+            payload.pop(name, None)
+        payload.update(stream=True, store=False)
+        for item in payload.get("input") or []:
+            if isinstance(item, dict) and item.get("role") == "system":
+                item["role"] = "developer"
+        functions = [tool for tool in payload.get("tools", []) if tool.get("type") in ("function", "custom")]
+        if functions:
+            payload["tools"] = [tool for tool in payload["tools"] if tool not in functions]
+            payload["tools"].append({"type": "namespace", "name": "tradingagents", "tools": functions})
+            choice = payload.get("tool_choice")
+            if isinstance(choice, dict) and choice.get("type") in ("function", "custom"):
+                payload["tool_choice"] = {**choice, "namespace": "tradingagents"}
+        return payload
+
+    def _stream(self, *args, **kwargs):
+        completed = False
+        for chunk in super()._stream(*args, **kwargs):
+            status = chunk.message.response_metadata.get("status")
+            if status == "incomplete":
+                raise RuntimeError("ChatGPT response incomplete; retry the analysis.")
+            completed = completed or status == "completed"
+            yield chunk
+        if not completed:
+            raise RuntimeError("ChatGPT stream ended without response.completed; retry the analysis.")
+
+    async def _astream(self, *args, **kwargs):
+        completed = False
+        async for chunk in super()._astream(*args, **kwargs):
+            status = chunk.message.response_metadata.get("status")
+            if status == "incomplete":
+                raise RuntimeError("ChatGPT response incomplete; retry the analysis.")
+            completed = completed or status == "completed"
+            yield chunk
+        if not completed:
+            raise RuntimeError("ChatGPT stream ended without response.completed; retry the analysis.")
+
+    async def ainvoke(self, input, config=None, **kwargs):
+        return normalize_content(await super().ainvoke(input, config, **kwargs))
+
 # Kwargs forwarded from user config to ChatOpenAI
 _PASSTHROUGH_KWARGS = (
     "timeout", "max_retries", "reasoning_effort", "max_tokens",
@@ -261,6 +322,21 @@ class OpenAIClient(BaseLLMClient):
         """Return configured ChatOpenAI instance."""
         self.warn_if_unknown_model()
         llm_kwargs = {"model": self.model}
+
+        if self.provider == "chatgpt":
+            from .chatgpt_auth import API_BASE, credential
+
+            # Never send a plan token to a relay or let OPENAI_BASE_URL redirect it.
+            if self.base_url and self.base_url.rstrip("/") != API_BASE:
+                raise ValueError(f"chatgpt only connects to {API_BASE}; unset backend_url.")
+            if "api_key" in self.kwargs:
+                raise ValueError("chatgpt uses its OAuth sign-in, not an api_key.")
+            plan_kwargs = {key: self.kwargs[key] for key in _PASSTHROUGH_KWARGS
+                           if key in self.kwargs and key != "api_key"}
+            plan_kwargs.update(model=self.model, base_url=API_BASE, api_key=credential(),
+                               app_retries=self.kwargs.get("app_retries", 0),
+                               app_retry_delay=self.kwargs.get("app_retry_delay", 5.0))
+            return ChatGPTPlanChatOpenAI(**plan_kwargs)
 
         # Generic OpenAI-compatible relay (#77 / #81): the user supplies the
         # base_url and model themselves, and the API key comes from a generic

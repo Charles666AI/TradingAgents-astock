@@ -5,7 +5,7 @@ from .model_catalog import get_known_models
 
 # Providers whose model names are user-supplied and free-form, so any model
 # string is accepted without warning.
-_ANY_MODEL_PROVIDERS = ("ollama", "openrouter", "openai_compatible")
+_ANY_MODEL_PROVIDERS = ("ollama", "openrouter", "openai_compatible", "chatgpt")
 
 VALID_MODELS = {
     provider: models

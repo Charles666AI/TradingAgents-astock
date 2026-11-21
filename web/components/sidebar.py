@@ -143,6 +143,7 @@ _PROVIDERS: list[tuple[str, str]] = [
     ("通义千问 Qwen", "qwen"),
     ("智谱 GLM", "glm"),
     ("OpenAI", "openai"),
+    ("ChatGPT（Plus / Pro 订阅·OAuth 登录）", "chatgpt"),
     ("Anthropic", "anthropic"),
     ("Google Gemini", "google"),
     ("xAI Grok", "xai"),
@@ -259,14 +260,35 @@ def _render_llm_config() -> None:
         range(len(_PROVIDERS)),
         format_func=lambda i: _PROVIDER_DISPLAY[i],
         key="llm_provider_idx",
-        help="选择你配置了 API Key 的供应商",
+        help="选择已配置 API Key 或已登录订阅的供应商",
     )
     provider_key = _PROVIDER_KEYS[provider_idx]
     st.session_state["llm_provider"] = provider_key
 
+    if provider_key == "chatgpt":
+        from tradingagents.llm_clients import chatgpt_auth
+        account = chatgpt_auth.signed_in_as()
+        if account:
+            st.caption(f"ChatGPT 已登录：{account}")
+        else:
+            st.info("请在运行 Web 的同一台机器、同一用户下执行：`tradingagents login chatgpt`，完成后刷新页面。")
+        st.caption("使用 ChatGPT 订阅授权；与原版共享 ~/.tradingagents/chatgpt-auth.json。")
+        if st.button("刷新订阅可用模型", key="refresh_chatgpt_models"):
+            import requests
+            try:
+                st.session_state["chatgpt_models"] = chatgpt_auth.list_models()
+            except (requests.RequestException, chatgpt_auth.ChatGPTAuthError, ValueError) as exc:
+                st.error(f"获取模型失败：{exc}")
+
     if provider_key in MODEL_OPTIONS:
         quick_options = MODEL_OPTIONS[provider_key]["quick"]
         deep_options = MODEL_OPTIONS[provider_key]["deep"]
+        if provider_key == "chatgpt" and st.session_state.get("chatgpt_models"):
+            quick_options = deep_options = st.session_state["chatgpt_models"] + [("Custom model ID", "custom")]
+
+        for key, options in (("quick_model_idx", quick_options), ("deep_model_idx", deep_options)):
+            if not 0 <= st.session_state.get(key, 0) < len(options):
+                st.session_state[key] = 0
 
         quick_labels = [label for label, _ in quick_options]
         quick_values = [value for _, value in quick_options]
@@ -304,6 +326,7 @@ def _render_llm_config() -> None:
     st.text_input(
         "API Base URL（第三方/代理" + ("·必填" if base_url_required else "，可选") + "）",
         key="llm_base_url",
+        disabled=provider_key == "chatgpt",
         placeholder="例: https://your-relay.example/v1",
         help=(
             "通过第三方中转/代理访问模型时填写网关地址；留空则用所选供应商的官方地址。"

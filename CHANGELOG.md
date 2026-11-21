@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Breaking changes within the 0.x line are called out explicitly.
 
+## [Unreleased]
+
+### 新增 ChatGPT 订阅 OAuth
+
+- 从原版移植 PKCE 登录、ID token 验签、自动刷新和退出撤销；同机同用户共享原版凭据。
+- 增加 CLI `login/status/logout chatgpt`、交互模型选择及 Web 供应商和模型列表入口。
+- Responses 请求固定官方端点，转换 developer 指令，移除订阅不支持的参数，
+  函数工具使用命名空间；同步/异步流均要求完成事件，避免把中断视为分析成功。
+- 新增跨线程/进程刷新及真实 SDK 请求、工具回传、流式错误、Web 侧栏回归测试。
+- OAuth 需要 `cryptography`；`langchain-openai` 最低版本提高至 1.6.6。
+
 ## [0.5.22] — 2026-10-31
 
 ### 修复：历史分析混入实时北向资金（#121）

@@ -170,7 +170,7 @@ pip install "google-genai>=1.53.0" "httpx>=0.28.1"
 
 ### 2. Configure LLM
 
-> **API Key is required.** Subscription-based plans like Claude or ChatGPT cannot be used. Each analysis requires 30-50 LLM calls, which only the API mode supports.
+> Most providers require their own API key. ChatGPT Plus / Pro is also supported through the `chatgpt` OAuth provider: run `python -m cli.main login chatgpt`, then select ChatGPT in the CLI or Web sidebar. Check the sign-in with `python -m cli.main status chatgpt`; sign out with `python -m cli.main logout chatgpt`. Credentials are shared with upstream TradingAgents under `~/.tradingagents/chatgpt-auth.json` for the same OS user. See [the OAuth setup guide](README.md#chatgpt-plus--pro-订阅oauth). Claude subscriptions use the optional Agent SDK integration.
 
 Create a `.env` file in the project root and configure it based on your chosen provider:
 

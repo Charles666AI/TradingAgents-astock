@@ -176,6 +176,8 @@ pip install -e ".[agentsdk]"
 
 > **默认走 API Key 计费**。每次分析需 30-50 次 LLM 调用。
 >
+> **ChatGPT Plus / Pro**：运行 `python -m cli.main login chatgpt`，CLI/Web 选择 ChatGPT 即可使用订阅授权，无需 API Key。详见文末 OAuth 配置。
+>
 > **例外（v0.4.0 新增）**：装 `[agentsdk]` 后可让部分或全部节点经 Claude Agent SDK 走你**个人 Claude Pro/Max 订阅额度**，不产生 API 账单。见下方「用个人 Claude 订阅额度」。
 
 在项目根目录创建 `.env` 文件，按你选择的供应商配置：
@@ -308,7 +310,7 @@ streamlit run web/app.py
 ### 功能
 
 - **配置记住**：侧栏选的供应商 / 模型 / Base URL / 订阅覆盖写入 `~/.tradingagents/llm_config.json`，重开标签页或重启后自动恢复（v0.5.17）
-- **模型自选**：侧边栏支持 10 个 LLM 供应商切换（MiniMax/DeepSeek/Qwen/GLM/OpenAI/Anthropic/Google/xAI/OpenRouter/Ollama），外加 **「OpenAI 兼容（自定义 base_url）」** 一档可接任意 OpenAI 兼容网关（9Router / AI Router / 自建代理）
+- **模型自选**：侧边栏支持 11 个 LLM 供应商切换（MiniMax/DeepSeek/Qwen/GLM/OpenAI/ChatGPT 订阅/Anthropic/Google/xAI/OpenRouter/Ollama），外加 **「OpenAI 兼容（自定义 base_url）」** 一档可接任意 OpenAI 兼容网关（9Router / AI Router / 自建代理）
 - **一键分析**：输入 6 位 A 股代码 + 分析日期 +「数据起始日期」（默认本月第一天，可自定义技术分析回溯区间，支持按月/自定义时段分析），点击「开始分析」
 - **实时进度**：12 阶段 pipeline 实时显示（7 分析师 → 质量门控 → 辩论 → 风控 → 决策），所有已完成阶段的报告均可展开查看
 - **完整报告**：信号卡片（Buy/Hold/Sell）、7 份分析师报告、多空辩论、风控评估
@@ -590,3 +592,56 @@ config["agent_sdk_quick_model"] = "sonnet"    # 分析师节点
 #### 依赖说明
 
 `[agentsdk]` 的依赖链是 `claude-agent-sdk → mcp → httpx2`，**不碰 httpx**，与 mootdx 的 `httpx<0.26` 无冲突（已 `uv lock` 实测）——和 #87 里被移除的 `[google]` 情况不同，不需要单开 venv。
+
+
+### ChatGPT Plus / Pro 订阅（OAuth）
+
+可在 CLI 和 Web 的供应商列表选择 `chatgpt`。此入口沿用原版 TradingAgents 的
+OAuth + PKCE 登录，通过订阅授权调用 Responses API；无需设置 `OPENAI_API_KEY`。
+流程参考 [OpenAI Sign in with ChatGPT](https://developers.openai.com/siwc)。
+
+在项目目录、运行分析服务的同一系统用户下执行：
+
+```powershell
+python -m pip install -e .
+python -m cli.main login chatgpt
+python -m cli.main status chatgpt
+```
+
+打开终端输出的授权网址完成登录。默认回调为 `http://127.0.0.1:1455/auth/callback`，
+端口占用时使用空闲端口。远程服务器或容器无法接收浏览器回调时，将浏览器最后停留的
+完整回调地址粘贴回登录终端。登录有 10 分钟超时。
+
+完成后，CLI 运行 `python -m cli.main` 并选择 ChatGPT；Web 选择
+“ChatGPT（Plus / Pro 订阅·OAuth 登录）”，可点“刷新订阅可用模型”。内置
+`gpt-6-luna`（快速）、`gpt-6-sol`（深度）候选，也可填自定义 ID；实际可用性以账号
+返回的模型列表及额度为准。
+
+Python 配置示例：
+
+```python
+from tradingagents.default_config import DEFAULT_CONFIG
+
+config = {
+    **DEFAULT_CONFIG,
+    "llm_provider": "chatgpt",
+    "backend_url": None,
+    "quick_think_llm": "gpt-6-luna",
+    "deep_think_llm": "gpt-6-sol",
+    "openai_reasoning_effort": "medium",
+}
+```
+
+登录保存在 `~/.tradingagents/chatgpt-auth.json`，与原版同机、同用户共享；其他机器
+上的登录不会自动同步。令牌在到期前按需刷新，跨线程和进程的文件锁避免重复刷新。
+请求固定发往 OpenAI 官方地址，不接受自定义网关或显式 API Key，Web 会忽略残留的
+代理 Base URL。订阅不接受的采样和输出长度参数会被移除，system 指令转换为 developer，
+使用流式且不存储的 Responses 请求。CLI/Web 和 Python 的分析链路共用同一个客户端。
+
+退出并撤销授权：
+
+```powershell
+python -m cli.main logout chatgpt
+```
+
+退出会影响共享该凭据的原版项目。网络异常导致无法撤销时，终端会提示，本地登录仍会清除。
