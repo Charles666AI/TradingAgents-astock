@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from base64 import b64encode
 from datetime import datetime
+from html import escape
 import re
 from typing import Any
 
@@ -43,6 +45,24 @@ _ANALYST_SECTIONS = [
 def _safe_filename_label(label: str) -> str:
     cleaned = re.sub(r'[\\/:*?"<>|\s]+', "_", label).strip("_")
     return cleaned or "report"
+
+
+def _download_report(label: str, *, data: bytes, file_name: str, mime: str) -> None:
+    # Streamlit's shared /media endpoint does not run the app's login check.
+    # Deliver the export with the authenticated page instead of publishing a media URL.
+    encoded = b64encode(data).decode("ascii")
+    markup = (
+        f'<a href="data:{escape(mime, quote=True)};base64,{encoded}" '
+        f'download="{escape(file_name, quote=True)}" '
+        'style="display:flex;justify-content:center;padding:8px;color:#fff;'
+        'background:#262730;border-radius:8px;text-decoration:none;font:14px sans-serif">'
+        f'{escape(label)}</a>'
+    )
+    if hasattr(st, "iframe"):
+        st.iframe(markup, height=48, alt=label)
+    else:  # Supported older Streamlit releases.
+        from streamlit.components.v1 import html
+        html(markup, height=48)
 
 
 def _display_report_text(text: Any, ticker: str, final_state: dict[str, Any]) -> str:
@@ -214,22 +234,20 @@ def render_report(
     col_md, col_pdf, col_missing, col_spacer = st.columns([1, 1, 1, 1])
     with col_md:
         md_text = generate_markdown(final_state, ticker, trade_date, signal)
-        st.download_button(
+        _download_report(
             "📥 下载 Markdown",
             data=md_text.encode("utf-8"),
             file_name=f"TradingAgents-Astock_{_safe_filename_label(ticker_label)}_{trade_date}.md",
             mime="text/markdown",
-            use_container_width=True,
         )
     with col_pdf:
         try:
             pdf_bytes = generate_pdf(final_state, ticker, trade_date, signal)
-            st.download_button(
+            _download_report(
                 "📄 下载 PDF",
                 data=pdf_bytes,
                 file_name=f"TradingAgents-Astock_{_safe_filename_label(ticker_label)}_{trade_date}.pdf",
                 mime="application/pdf",
-                use_container_width=True,
             )
         except Exception as exc:  # noqa: BLE001 — never let PDF crash the page
             st.button(

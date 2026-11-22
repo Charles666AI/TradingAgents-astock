@@ -170,7 +170,7 @@ pip install "google-genai>=1.53.0" "httpx>=0.28.1"
 pip install -e ".[agentsdk]"
 ```
 
-> **装完即可用，无需 Docker。** 安装后直接跑 `streamlit run web/app.py`（Web UI）或 `tradingagents`（CLI）即可，详见下方「Web UI」「CLI 方式」两节。Docker 仅是可选的部署方式，本地开发不需要。
+> **本地运行无需 Docker。** CLI 安装后运行 `tradingagents`。Web 首次启动前需创建访问账号，见下方「Web UI」。
 
 ### 2. 配置 LLM
 
@@ -295,9 +295,11 @@ tradingagents performance --json     # 机器读的 JSON
 
 内置 Streamlit 可视化界面，支持在侧边栏选择 LLM 供应商和模型，输入股票代码即可一键分析，适合不写代码的用户。
 
-### 启动
+### 创建账号并启动
 
 ```bash
+python -m web.auth set admin
+
 # 方式一：命令行启动（推荐）
 tradingagents-web
 
@@ -305,7 +307,31 @@ tradingagents-web
 streamlit run web/app.py
 ```
 
-打开浏览器访问 `http://localhost:8501`。
+打开 `http://localhost:8501`，使用刚创建的账号登录。设密码时终端不会回显，至少需要 12 个字符。
+在服务端执行 `python -m web.auth set 用户名` 可添加账号或重置密码，执行
+`python -m web.auth remove 用户名` 可停用账号。默认文件是 `~/.tradingagents/web-accounts.json`，
+原生部署可用 `.env` 中的 `TRADINGAGENTS_WEB_ACCOUNTS_FILE` 指定绝对路径。
+文件只保存独立加盐的密码哈希。换密码或移除账号后，旧会话在页面下次交互时失效。
+登录有效期为 8 小时，页面刷新和新标签页需要重新登录。授权用户共享同一套历史报告。
+
+### Docker 一键管理
+
+在装有 Python 3.10+、Docker 和 Docker Compose v2 的机器上执行：
+
+```bash
+python scripts/web_service.py install
+python scripts/web_service.py start
+python scripts/web_service.py stop
+python scripts/web_service.py uninstall
+```
+
+`install` 构建 Web 镜像、首次提示创建账号并启动服务。默认用户名为 `admin`，可传
+`install --username 用户名`。已有 `.env` 和账号会沿用。按供应商在 `.env` 中配好模型后，
+再次 `start` 可应用配置。运行中的容器内可用 `docker compose exec web python -m web.auth set 用户名`
+管理账号。`uninstall` 移除 Web 容器和本地镜像，保留 `.env` 和存放账号、报告及缓存的数据卷。
+
+默认只在服务器本机监听，Docker 对外映射端口可通过 `.env` 的 `TRADINGAGENTS_WEB_PORT` 修改。
+远程访问可用 SSH 端口转发；对外部署时用支持 WebSocket 的 HTTPS 反向代理转发到本机端口。
 
 ### 功能
 

@@ -24,10 +24,16 @@ services:
       - STREAMLIT_SERVER_ADDRESS=0.0.0.0
       - STREAMLIT_SERVER_PORT=8501
       - STREAMLIT_SERVER_HEADLESS=true
+      - TRADINGAGENTS_WEB_ACCOUNTS_FILE=/home/appuser/.tradingagents/web-accounts.json
     ports:
-      - "8501:8501"
+      - "127.0.0.1:${TRADINGAGENTS_WEB_PORT:-8501}:8501"
     volumes:
       - tradingagents_data:/home/appuser/.tradingagents
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8501/_stcore/health', timeout=3).close()"]
+      interval: 5s
+      timeout: 4s
+      retries: 5
 
   ollama:
     image: ollama/ollama:latest

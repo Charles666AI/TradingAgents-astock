@@ -80,7 +80,6 @@ def _load_report_viewer(monkeypatch, fake_st: _FakeStreamlit):
         "button",
         "caption",
         "columns",
-        "download_button",
         "error",
         "expander",
         "info",
@@ -127,7 +126,9 @@ def _load_report_viewer(monkeypatch, fake_st: _FakeStreamlit):
     monkeypatch.setitem(sys.modules, "tradingagents.dataflows.utils", dataflow_utils_stub)
     monkeypatch.setitem(sys.modules, "web.stock_display", stock_display_stub)
     sys.modules.pop("web.components.report_viewer", None)
-    return importlib.import_module("web.components.report_viewer")
+    module = importlib.import_module("web.components.report_viewer")
+    monkeypatch.setattr(module, "_download_report", fake_st.download_button)
+    return module
 
 
 def _install_report_viewer_fakes(monkeypatch, report_viewer, pdf_calls: list[tuple[Any, ...]]) -> None:

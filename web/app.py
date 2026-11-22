@@ -18,14 +18,7 @@ if str(_PROJECT_ROOT) not in sys.path:
 # 注意：load_dotenv 仅在进程启动时执行一次，启动后修改 .env 仍需重启 Web 服务才生效。
 load_dotenv(_PROJECT_ROOT / ".env", override=True)
 
-from tradingagents.default_config import DEFAULT_CONFIG  # noqa: E402
-
-from web.components.progress_panel import render_progress  # noqa: E402
-from web.components.report_viewer import render_report  # noqa: E402
-from web.components.sidebar import render_sidebar, validate_model_selection  # noqa: E402
-from web.history import clear_incomplete_task, extract_signal, load_analysis  # noqa: E402
-from web.progress import ProgressTracker  # noqa: E402
-from web.runner import run_analysis_in_thread  # noqa: E402
+from web.auth import require_login  # noqa: E402
 
 # ── Page config ──────────────────────────────────────────────────────────────
 
@@ -35,6 +28,16 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+require_login()
+
+from tradingagents.default_config import DEFAULT_CONFIG  # noqa: E402
+from web.components.progress_panel import render_progress  # noqa: E402
+from web.components.report_viewer import render_report  # noqa: E402
+from web.components.sidebar import render_sidebar, validate_model_selection  # noqa: E402
+from web.history import clear_incomplete_task, extract_signal, load_analysis  # noqa: E402
+from web.progress import ProgressTracker  # noqa: E402
+from web.runner import run_analysis_in_thread  # noqa: E402
 
 # ── Custom CSS ───────────────────────────────────────────────────────────────
 

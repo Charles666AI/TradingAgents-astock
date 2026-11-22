@@ -6,7 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Breaking changes within the 0.x line are called out explicitly.
 
-## [Unreleased]
+## Unreleased
+
+### 新增 Web 访问登录和运维脚本
+
+- 访问分析和报告前须登录。服务器保存加盐密码哈希，支持密码重置、账号撤销和尝试次数限制。
+- `scripts/web_service.py` 提供 Docker Compose 安装、启动、停止和卸载。卸载保留分析和账号数据。
 
 ### 新增 ChatGPT 订阅 OAuth
 

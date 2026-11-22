@@ -166,7 +166,7 @@ pip install --no-deps "langchain-google-genai>=4.0.0"
 pip install "google-genai>=1.53.0" "httpx>=0.28.1"
 ```
 
-> **Ready to use after installation, no Docker required.** After installing, run `streamlit run web/app.py` (Web UI) or `tradingagents` (CLI) directly. See the "Web UI" and "CLI" sections below. Docker is only an optional deployment method and not needed for local development.
+> Docker is optional for local use. Run `tradingagents` for the CLI, or set up a Web access account before launching Streamlit. See the Web UI section below.
 
 ### 2. Configure LLM
 
@@ -290,6 +290,8 @@ Built-in Streamlit visualization interface allows selecting LLM providers and mo
 ### Startup
 
 ```bash
+python -m web.auth set admin
+
 # Option 1: Start via command line (recommended)
 tradingagents-web
 
@@ -297,7 +299,16 @@ tradingagents-web
 streamlit run web/app.py
 ```
 
-Open your browser and navigate to `http://localhost:8501`.
+Sign in at `http://localhost:8501`. The server stores salted password hashes in
+`~/.tradingagents/web-accounts.json`. Use `python -m web.auth set USERNAME` to add
+an account or reset its password and `python -m web.auth remove USERNAME` to revoke access.
+Sessions expire after eight hours. Reloads and new tabs require a fresh login.
+
+With Docker and Compose v2 installed, run `python scripts/web_service.py install`
+to build the Web service, create the first account and start it. Use the same script
+with `start`, `stop` or `uninstall` to manage the installation. Uninstall keeps the
+data volume and `.env`. The service binds to localhost by default. For remote access,
+use an SSH tunnel or an HTTPS reverse proxy with WebSocket forwarding.
 
 ### Features
 

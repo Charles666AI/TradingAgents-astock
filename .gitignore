@@ -214,6 +214,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+web-accounts.json
+web-accounts.json.lock
 
 # Cache
 **/data_cache/
