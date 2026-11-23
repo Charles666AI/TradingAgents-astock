@@ -249,7 +249,12 @@ class ChatGPTPlanChatOpenAI(NormalizedChatOpenAI):
         functions = [tool for tool in payload.get("tools", []) if tool.get("type") in ("function", "custom")]
         if functions:
             payload["tools"] = [tool for tool in payload["tools"] if tool not in functions]
-            payload["tools"].append({"type": "namespace", "name": "tradingagents", "tools": functions})
+            payload["tools"].append({
+                "type": "namespace",
+                "name": "tradingagents",
+                "description": "Tools for gathering market data and returning structured analysis results.",
+                "tools": functions,
+            })
             choice = payload.get("tool_choice")
             if isinstance(choice, dict) and choice.get("type") in ("function", "custom"):
                 payload["tool_choice"] = {**choice, "namespace": "tradingagents"}

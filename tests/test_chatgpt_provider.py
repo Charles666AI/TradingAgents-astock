@@ -159,6 +159,8 @@ def test_real_sdk_stream_and_tool_roundtrip(signed_in, terminal, async_mode):
             invoke()
     payload = sent[0]
     assert payload["tools"][0]["type"] == "namespace"
+    assert payload["tools"][0]["description"].strip()
+    assert payload["tools"][0]["tools"][0]["description"] == "Get quote"
     assert payload["tools"][0]["tools"][0]["name"] == "quote"
     assert any(item.get("type") == "function_call_output" for item in payload["input"])
 
