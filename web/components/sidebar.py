@@ -287,8 +287,17 @@ def _render_llm_config() -> None:
             quick_options = deep_options = st.session_state["chatgpt_models"] + [("Custom model ID", "custom")]
 
         for key, options in (("quick_model_idx", quick_options), ("deep_model_idx", deep_options)):
-            if not 0 <= st.session_state.get(key, 0) < len(options):
-                st.session_state[key] = 0
+            # Saved preferences can contain strings, and the option list can shrink on refresh.
+            saved_index = st.session_state.get(key, 0)
+            if type(saved_index) is int and 0 <= saved_index < len(options):
+                continue
+            index = 0
+            if isinstance(saved_index, str):
+                try:
+                    index = int(saved_index)
+                except ValueError:
+                    pass
+            st.session_state[key] = index if 0 <= index < len(options) else 0
 
         quick_labels = [label for label, _ in quick_options]
         quick_values = [value for _, value in quick_options]

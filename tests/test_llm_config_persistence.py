@@ -75,3 +75,31 @@ def test_write_failure_only_warns(fake_st, monkeypatch, caplog):
     blocker.write_text("not a dir")
     sidebar._save_llm_config()  # must not raise
     assert any("持久化失败" in r.getMessage() for r in caplog.records)
+
+
+@pytest.mark.parametrize(("quick", "deep", "expected"), [
+    ("1", "1", ("gpt-6-sol", "gpt-6-luna")),
+    ("gpt-6-sol", None, ("gpt-6-luna", "gpt-6-sol")),
+    (-1, 50, ("gpt-6-luna", "gpt-6-sol")),
+    (True, 1.0, ("gpt-6-luna", "gpt-6-sol")),
+])
+def test_chatgpt_picker_recovers_from_old_saved_indices(tmp_path, monkeypatch, quick, deep, expected):
+    from streamlit.testing.v1 import AppTest
+    from tradingagents.llm_clients import chatgpt_auth
+
+    path = tmp_path / "llm_config.json"
+    path.write_text(json.dumps({
+        "llm_provider": "chatgpt", "quick_model_idx": quick, "deep_model_idx": deep,
+    }), encoding="utf-8")
+    monkeypatch.setattr(sidebar, "_LLM_CONFIG_PATH", path)
+    monkeypatch.setattr(chatgpt_auth, "signed_in_as", lambda: "test@example.com")
+
+    app = AppTest.from_string(
+        "from web.components.sidebar import _load_saved_llm_config, _render_llm_config\n"
+        "_load_saved_llm_config()\n"
+        "_render_llm_config()"
+    ).run()
+
+    assert not app.exception
+    assert app.session_state["llm_provider"] == "chatgpt"
+    assert (app.session_state["quick_think_llm"], app.session_state["deep_think_llm"]) == expected

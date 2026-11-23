@@ -170,7 +170,7 @@ def test_status_command(signed_in):
     assert result.exit_code == 0 and "test@example.com" in result.output
 
 
-def test_web_sidebar_chatgpt_selection_and_models(signed_in):
+def test_web_sidebar_chatgpt_selection_and_models(signed_in, monkeypatch):
     from streamlit.testing.v1 import AppTest
     from web.components.sidebar import _PROVIDER_KEYS
     app = AppTest.from_string("from web.components.sidebar import _render_llm_config; _render_llm_config()")
@@ -181,3 +181,10 @@ def test_web_sidebar_chatgpt_selection_and_models(signed_in):
     assert app.session_state["quick_think_llm"] == "gpt-6-luna"
     assert app.session_state["deep_think_llm"] == "gpt-6-sol"
     assert app.text_input(key="llm_base_url").disabled
+
+    app.selectbox(key="quick_model_idx").select(2).run()
+    assert app.text_input(key="custom_quick_model")
+    monkeypatch.setattr(auth, "list_models", lambda: [("GPT-6 Sol", "gpt-6-sol")])
+    app.button(key="refresh_chatgpt_models").click().run()
+    assert not app.exception
+    assert app.session_state["quick_think_llm"] == "gpt-6-sol"
