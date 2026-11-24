@@ -81,6 +81,7 @@ include = ["tradingagents*", "cli*", "web*"]
 
 [tool.setuptools.package-data]
 cli = ["static/*"]
+web = ["fonts/*.otf", "fonts/LICENSE.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

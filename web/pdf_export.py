@@ -288,6 +288,10 @@ def _find_cjk_fonts() -> tuple[Path, Path]:
     if discovered:
         return discovered
 
+    bundled_font = Path(__file__).parent / "fonts" / "SourceHanSansCN-Regular.otf"
+    if bundled_font.is_file():
+        return bundled_font, bundled_font
+
     raise PDFExportError(_font_missing_message())
 
 

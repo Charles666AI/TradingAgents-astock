@@ -2,25 +2,22 @@
 
 from pathlib import Path
 
-import pytest
 from fpdf.enums import WrapMode
 
 from web.pdf_export import (
-    PDFExportError,
     _ReportPDF,
     _compact_inline_text,
     _discover_cjk_fonts,
-    _find_cjk_fonts,
     _format_table_cells,
     generate_pdf,
 )
 
 
-def test_generate_pdf_with_chinese_markdown_when_cjk_font_available():
-    try:
-        _find_cjk_fonts()
-    except PDFExportError as exc:
-        pytest.skip(str(exc))
+def test_generate_chinese_pdf_without_system_fonts(monkeypatch):
+    monkeypatch.setattr("web.stock_display.resolve_stock_name", lambda ticker: "贵州茅台")
+    monkeypatch.delenv("TRADINGAGENTS_PDF_FONT", raising=False)
+    monkeypatch.setattr("web.pdf_export._FONT_CANDIDATES", [])
+    monkeypatch.setattr("web.pdf_export._discover_cjk_fonts", lambda: None)
 
     state = {
         "market_report": "# 技术分析\n- 趋势: 偏强\n- 结论: 中文字体测试通过。",
@@ -31,6 +28,7 @@ def test_generate_pdf_with_chinese_markdown_when_cjk_font_available():
     pdf_bytes = generate_pdf(state, "600519", "2026-05-30", "HOLD")
 
     assert pdf_bytes.startswith(b"%PDF-")
+    assert b"/FontFile" in pdf_bytes
     assert len(pdf_bytes) > 1000
 
 
